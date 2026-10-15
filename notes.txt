@@ -1,0 +1,70 @@
+What is TypeScript?
+>> TypeScript being a Syntactic Superset means it shares the same base syntax as JavaScript, but adds something to it.
+
+Why should I use TypeScript?
+>> TypeScript uses compile time type checking.
+>> Which means it checks if the specified types match before running the code, not while running the code.
+
+TypeScript Compiler
+>> TypeScript being converted into JavaScript means it runs anywhere that JavaScript runs!
+
+Note: If you're using the tsconfig.json configuration mentioned earlier, you would place your TypeScript files in the src directory and the compiled JavaScript will appear in the build directory.
+
+Best Practice: Use explicit types for function parameters and return types to make your code more maintainable and self-documenting.
+
+Note: Type inference works best when variables are initialized at declaration.
+Uninitialized variables have type 'any' by default unless you enable strictNullChecks in your tsconfig.json.
+
+Watch Out: While type inference is convenient, being explicit with types can make your code more maintainable, especially in larger codebases or public APIs.
+
+TypeScript Special Types
+>> These special types are part of TypeScript's type system and help make your code more type-safe and self-documenting.
+
+When to use any:
+- When migrating JavaScript code to TypeScript
+- When working with dynamic content where the type is unknown
+- When you need to opt out of type checking for a specific case
+
+any can be a useful way to get past errors since it disables type checking, but TypeScript will not be able to provide type safety, and tools which rely on type data, such as auto completion, will not work.
+Remember, it should be avoided at "any" cost...
+
+Key differences between unknown and any:
+- unknown must be type-checked before use
+- You can't access properties on an unknown type without type assertion
+- You can't call or construct values of type unknown
+
+When to use unknown:
+- When working with data from external sources (APIs, user input, etc.)
+- When you want to ensure type safety while still allowing flexibility
+- When migrating from JavaScript to TypeScript in a type-safe way
+
+Type narrowing with unknown:
+>> You can narrow down the type of an unknown value using type guards.
+
+Common use cases for never:
+- Functions that never return (always throw an error or enter an infinite loop)
+- Type guards that never pass type checking
+- Exhaustiveness checking in discriminated unions
+
+When to use never:
+- For functions that will never return a value
+- In type guards that should never match
+- For exhaustive type checking in switch statements
+- In generic types to indicate certain cases are impossible
+
+Key points about undefined and null:
+- undefined means a variable has been declared but not assigned a value
+- null is an explicit assignment that represents no value or no object
+- In TypeScript, both have their own types: undefined and null respectively
+- With strictNullChecks enabled, you must explicitly handle these types
+
+Important: These types are most useful when strictNullChecks is enabled in your tsconfig.json file.
+This ensures that null and undefined are only assignable to themselves and any.
+To enable strict null checks, add this to your tsconfig.json:
+>>
+{
+  "compilerOptions": {
+    "strictNullChecks": true
+  }
+}
+
