@@ -68,3 +68,27 @@ To enable strict null checks, add this to your tsconfig.json:
   }
 }
 
+Typed Arrays
+>> Even though we have a boolean, string, and number the order matters in our tuple and will throw an error.
+
+Readonly Tuple
+>> If you have ever used React before you have worked with tuples more than likely.
+useState returns a tuple of the value and a setter function.
+const [firstName, setFirstName] = useState('Dylan') is a common example.
+Because of the structure we know our first value in our list will be a certain value type in this case a string and the second value a function.
+
+Named Tuples
+>> Named tuples provide more context for what our index values represent.
+
+Index Signatures
+>> Index signatures can also be expressed with utility types like Record<string, number>.
+
+String Enums
+>> Technically, you can mix and match string and numeric enum values, but it is recommended not to do so.
+
+Return Type
+>> If no return type is defined, TypeScript will attempt to infer it through the types of the variables or expressions returned.
+
+Parameters
+>> If no parameter type is defined, TypeScript will default to using any, unless additional type information is available as shown in the Default Parameters and Type Alias sections below.
+
