@@ -1,330 +1,617 @@
-What is TypeScript?
->> TypeScript being a Syntactic Superset means it shares the same base syntax as JavaScript, but adds something to it.
+# TypeScript Notes
 
-Why should I use TypeScript?
->> TypeScript uses compile time type checking.
->> Which means it checks if the specified types match before running the code, not while running the code.
+A practical, beginner-to-intermediate guide to TypeScript: core ideas, types, classes, generics, async code, tooling and common pitfalls.
 
-TypeScript Compiler
->> TypeScript being converted into JavaScript means it runs anywhere that JavaScript runs!
+## Table of Contents
 
-Note: If you're using the tsconfig.json configuration mentioned earlier, you would place your TypeScript files in the src directory and the compiled JavaScript will appear in the build directory.
+1. [Introduction](#1-introduction)
+2. [Setup and Tooling](#2-setup-and-tooling)
+3. [Type Basics and Inference](#3-type-basics-and-inference)
+4. [Special Types](#4-special-types)
+5. [Arrays, Tuples, Enums and Index Signatures](#5-arrays-tuples-enums-and-index-signatures)
+6. [Functions](#6-functions)
+7. [Casting (Type Assertions)](#7-casting-type-assertions)
+8. [Classes](#8-classes)
+9. [Generics and Utility Types](#9-generics-and-utility-types)
+10. [Null and Undefined](#10-null-and-undefined)
+11. [Promises and Async/Await](#11-promises-and-asyncawait)
+12. [Error Handling](#12-error-handling)
+13. [TypeScript in Real Projects](#13-typescript-in-real-projects)
+14. [Migrating from JavaScript](#14-migrating-from-javascript)
+15. [Common Pitfalls](#15-common-pitfalls)
 
-Best Practice: Use explicit types for function parameters and return types to make your code more maintainable and self-documenting.
+---
 
-Note: Type inference works best when variables are initialized at declaration.
-Uninitialized variables have type 'any' by default unless you enable strictNullChecks in your tsconfig.json.
+## 1. Introduction
 
-Watch Out: While type inference is convenient, being explicit with types can make your code more maintainable, especially in larger codebases or public APIs.
+### What is TypeScript?
 
-TypeScript Special Types
->> These special types are part of TypeScript's type system and help make your code more type-safe and self-documenting.
+TypeScript is a **syntactic superset of JavaScript**: it shares JavaScript's base syntax and adds a type system on top. Any valid JavaScript is also valid TypeScript.
 
-When to use any:
-- When migrating JavaScript code to TypeScript
-- When working with dynamic content where the type is unknown
-- When you need to opt out of type checking for a specific case
+### Why use TypeScript?
 
-any can be a useful way to get past errors since it disables type checking, but TypeScript will not be able to provide type safety, and tools which rely on type data, such as auto completion, will not work.
-Remember, it should be avoided at "any" cost...
+- It performs **compile-time type checking**: types are verified *before* the code runs, not while it runs.
+- It catches whole classes of bugs early, and gives better autocomplete and safer refactoring.
 
-Key differences between unknown and any:
-- unknown must be type-checked before use
-- You can't access properties on an unknown type without type assertion
-- You can't call or construct values of type unknown
+### The TypeScript compiler
 
-When to use unknown:
-- When working with data from external sources (APIs, user input, etc.)
-- When you want to ensure type safety while still allowing flexibility
-- When migrating from JavaScript to TypeScript in a type-safe way
+TypeScript is compiled (`tsc`) into JavaScript, so the output runs anywhere JavaScript runs: browsers, Node.js, and more.
 
-Type narrowing with unknown:
->> You can narrow down the type of an unknown value using type guards.
+> **Note:** With a `tsconfig.json` that sets `rootDir: "src"` and `outDir: "build"`, you place `.ts` files in `src/` and the compiled `.js` appears in `build/`.
 
-Common use cases for never:
-- Functions that never return (always throw an error or enter an infinite loop)
-- Type guards that never pass type checking
-- Exhaustiveness checking in discriminated unions
+---
 
-When to use never:
-- For functions that will never return a value
-- In type guards that should never match
-- For exhaustive type checking in switch statements
-- In generic types to indicate certain cases are impossible
+## 2. Setup and Tooling
 
-Key points about undefined and null:
-- undefined means a variable has been declared but not assigned a value
-- null is an explicit assignment that represents no value or no object
-- In TypeScript, both have their own types: undefined and null respectively
-- With strictNullChecks enabled, you must explicitly handle these types
+**Prerequisites:** a recent Node.js LTS (v18+ recommended) and npm. Verify with:
 
-Important: These types are most useful when strictNullChecks is enabled in your tsconfig.json file.
-This ensures that null and undefined are only assignable to themselves and any.
-To enable strict null checks, add this to your tsconfig.json:
->>
+```bash
+node -v
+npm -v
+```
+
+You write TypeScript (`.ts`) during development and compile it to JavaScript (`.js`) for Node.js to run in production.
+
+```bash
+npm install --save-dev typescript @types/node
+npx tsc --init
+```
+
+What these do:
+
+- `typescript` adds the compiler (`tsc`).
+- `@types/node` provides Node.js type definitions.
+- `npx tsc --init` creates a `tsconfig.json`.
+
+### Option highlights
+
+| Option | Purpose |
+| --- | --- |
+| `rootDir` / `outDir` | Keep source (`src`) separate from build output (`dist`) |
+| `strict` | Enables the safest set of type checks |
+| `esModuleInterop` | Smoother interop between CommonJS and ES modules |
+| `sourceMap` | Generates maps so you can debug compiled code |
+
+**CommonJS vs ESM:** these notes use `module: "commonjs"`. If you use ESM (`"type": "module"` in `package.json`), set `module` to `nodenext` or `node16` and use `import`/`export` consistently.
+
+> **Warning:** Use `ts-node` and `nodemon` for development only. For production, compile with `tsc` and run Node on the JS output.
+
+> **Tip:** Most IDEs (including VS Code) support debugging TypeScript with breakpoints when source maps are enabled.
+
+---
+
+## 3. Type Basics and Inference
+
+> **Best practice:** Use explicit types for function parameters and return types. It makes code more maintainable and self-documenting.
+
+**Type inference** works best when variables are initialized at declaration:
+
+```ts
+let count = 5;        // inferred as number
+let name = "Dylan";   // inferred as string
+```
+
+A variable declared without an initial value and without an annotation falls back to `any` (and `noImplicitAny`, part of `strict`, will flag that as an error).
+
+> **Watch out:** Inference is convenient, but explicit types help in larger codebases and public APIs.
+
+---
+
+## 4. Special Types
+
+These types are part of TypeScript's type system and help make code more type-safe and self-documenting.
+
+### `any`
+
+Opts out of type checking entirely.
+
+When it is acceptable:
+
+- Migrating JavaScript code to TypeScript
+- Dynamic content whose type is genuinely unknown
+- Opting out of checking for one specific case
+
+`any` gets you past errors, but TypeScript can no longer provide type safety, and tools that rely on type data (such as autocomplete) stop working. Remember: it should be avoided at "any" cost.
+
+### `unknown`
+
+The type-safe counterpart of `any`.
+
+- An `unknown` value **must be type-checked before use**.
+- You can't access properties on it without narrowing or an assertion.
+- You can't call or construct values of type `unknown`.
+
+Use it for:
+
+- Data from external sources (APIs, user input)
+- Keeping type safety while still allowing flexibility
+- Migrating from JavaScript in a type-safe way
+
+**Narrowing with type guards:**
+
+```ts
+function print(value: unknown) {
+  if (typeof value === "string") {
+    console.log(value.toUpperCase()); // value is string here
+  }
+}
+```
+
+### `never`
+
+Represents values that never occur.
+
+Common use cases:
+
+- Functions that never return (they always throw or loop forever)
+- Type guards that can never match
+- Exhaustiveness checking in discriminated unions and `switch` statements
+- Generic types where certain cases are impossible
+
+```ts
+function fail(message: string): never {
+  throw new Error(message);
+}
+```
+
+### `undefined` and `null`
+
+- `undefined`: a variable has been declared but not assigned a value.
+- `null`: an explicit assignment meaning "no value / no object".
+- Each has its own type (`undefined` and `null`).
+- With `strictNullChecks` enabled, you must handle them explicitly.
+
+These are most useful with `strictNullChecks` on, which ensures `null` and `undefined` are only assignable to themselves (and `any`/`unknown`). Enable it in `tsconfig.json`:
+
+```json
 {
   "compilerOptions": {
     "strictNullChecks": true
   }
 }
+```
 
-Typed Arrays
->> Even though we have a boolean, string, and number the order matters in our tuple and will throw an error.
+---
 
-Readonly Tuple
->> If you have ever used React before you have worked with tuples more than likely.
-useState returns a tuple of the value and a setter function.
-const [firstName, setFirstName] = useState('Dylan') is a common example.
-Because of the structure we know our first value in our list will be a certain value type in this case a string and the second value a function.
+## 5. Arrays, Tuples, Enums and Index Signatures
 
-Named Tuples
->> Named tuples provide more context for what our index values represent.
+### Typed arrays and tuples
 
-Index Signatures
->> Index signatures can also be expressed with utility types like Record<string, number>.
+A **tuple** is an array with a fixed length and a fixed type per position. **Order matters**: putting values in the wrong order is a compile-time error.
 
-String Enums
->> Technically, you can mix and match string and numeric enum values, but it is recommended not to do so.
+```ts
+let ourTuple: [number, boolean, string];
+ourTuple = [5, false, "Coding God was here"]; // OK
+ourTuple = [false, "Coding God was here", 5]; // Error
+```
 
-Return Type
->> If no return type is defined, TypeScript will attempt to infer it through the types of the variables or expressions returned.
+### Readonly tuples
 
-Parameters
->> If no parameter type is defined, TypeScript will default to using any, unless additional type information is available as shown in the Default Parameters and Type Alias sections below.
+If you have used React, you have almost certainly used tuples. `useState` returns a tuple of a value and a setter function:
 
-Casting with as
->> Casting doesn't actually change the type of the data within the variable, for example the following code will not work as expected since the variable x still holds a number.
-        let x: unknown = 4;
-        console.log((x as string).length); // prints undefined since numbers don't have a length
->> TypeScript will still attempt to typecheck casts to prevent casts that don't seem correct, for example the following will throw a type error since TypeScript knows casting a string to a number doesn't make sense without converting the data:
-        console.log((4 as string).length); // Error: Conversion of type 'number' to type 'string' may be a mistake because neither type sufficiently overlaps with the other. If          this was intentional, convert the expression to 'unknown' first.
-The Force casting section below covers how to override this.
+```ts
+const [firstName, setFirstName] = useState("Dylan");
+```
 
-Casting with <>
->> This type of casting will not work with TSX, such as when working on React files.
+Because of the tuple's structure, TypeScript knows the first item is a `string` and the second is a function.
 
-Members: Visibility
->> There are three main visibility modifiers in TypeScript.
-- public - (default) allows access to the class member from anywhere
-- private - only allows access to the class member from within the class
-- protected - allows access to the class member from itself and any classes that inherit it.
+### Named tuples
 
->> The this keyword in a class usually refers to the instance of the class.
+Named tuples give context to what each index represents:
 
-Inheritance: Implements
->> A class can implement multiple interfaces by listing each one after implements, separated by a comma like so: class Rectangle implements Shape, Colored {
+```ts
+const graph: [x: number, y: number] = [55.2, 41.3];
+```
 
-Override
->> By default the override keyword is optional when overriding a method, and only helps to prevent accidentally overriding a method that does not exist.
->> Use the setting noImplicitOverride to force it to be used when overriding.
+### Index signatures
 
-Abstract Classes
->> Abstract classes cannot be directly instantiated, as they do not have all their members implemented.
+Describe objects whose keys aren't known ahead of time:
 
-Functions
->> TypeScript can also infer the type of the generic parameter from the function parameters.
+```ts
+const scores: { [key: string]: number } = {};
+```
 
-Classes
->> TypeScript can also infer the type of the generic parameter if it's used in a constructor parameter.
+They can also be expressed with the `Record` utility type:
 
-Type Aliases
->> This also works with interfaces with the following syntax: interface Wrapped<T> {
+```ts
+const scores: Record<string, number> = {};
+```
 
-Extends
->> This can be combined with a default value.
+> **Note:** In JavaScript all object keys are stored as strings, even numeric ones. TypeScript still distinguishes arrays from objects to help catch logic errors.
 
-Record
->> Record<string, number> is equivalent to { [key: string]: number }
+> **Important:** When combining explicit properties with an index signature, each explicit property's type must be assignable to the index signature's value type.
 
-Readonly
->> Keep in mind TypeScript will prevent this at compile time, but in theory since it is compiled down to JavaScript you can still override a readonly property.
+### Enums
 
-TypeScript Null & Undefined
->> By default null and undefined handling is disabled, and can be enabled by setting strictNullChecks to true.
->> The rest of this page applies for when strictNullChecks is enabled.
+String enums are the safer, more readable option:
 
-Types
->> When strictNullChecks is enabled, TypeScript requires values to be set unless undefined is explicitly added to the type.
+```ts
+enum Direction {
+  Up = "UP",
+  Down = "DOWN",
+}
+```
 
-Null Assertion
->> Just like casting, this can be unsafe and should be used with care.
+Technically you can mix string and numeric members, but doing so is not recommended.
 
-Using non-typed NPM packages in TypeScript
->> Editors such as Visual Studio Code will often suggest installing packages like these when types are missing.
+---
 
-Index Signature Labels
->> 5.x also now supports native JavaScript private fields.
->> The TypeScript 'private' still works.
+## 6. Functions
 
-Prerequisites: Install a recent Node.js LTS (v18+ recommended) and npm.
-Verify with node -v and npm -v.
+### Return types
 
-Note: You write TypeScript (.ts) during development and compile it to JavaScript (.js) for Node.js to run in production.
+If you don't declare a return type, TypeScript infers it from the values returned.
 
-What these do:
-- typescript adds the TypeScript compiler (tsc)
-- @types/node provides Node.js type definitions
-- npx tsc --init creates a tsconfig.json config file
+```ts
+function add(a: number, b: number): number {
+  return a + b;
+}
+```
 
-Option highlights:
-- rootDir/outDir: keeps source (src) separate from build output (dist).
-- strict: enables the safest type checking.
-- esModuleInterop: smoother interop with CommonJS/ES modules.
-- sourceMap: generate maps for debugging compiled code.
+### Parameters
 
-CommonJS vs ESM: This guide uses module: "commonjs".
-If you use ESM (type: "module" in package.json), set module: "nodenext" or node16, and use import/export consistently.
+If you don't declare a parameter type, TypeScript uses `any` unless more type information is available (for example from default values or a type alias). Under `strict`, an untyped parameter is an error.
 
-Warning: Use ts-node and nodemon only for development.
-For production, compile with tsc and run Node on the JS output.
+---
 
-What TypeScript adds here:
-- Typed Request, Response, and NextFunction for Express handlers.
-- A User interface to guarantee the shape of user data.
-- Safer refactoring and better autocompletion with typed route params and bodies.
+## 7. Casting (Type Assertions)
 
-TypeScript with Database
->> Before you start:
-- Install packages: npm install typeorm reflect-metadata pg (use pg for PostgreSQL).
-- Enable in tsconfig.json when using decorators:
-         { "compilerOptions": { "experimentalDecorators": true, "emitDecoratorMetadata": true } }
-- Import reflect-metadata once at app startup.
+### Casting with `as`
 
-Note: The test script is optional and assumes Jest is set up.
-If you are not using Jest, you can omit it.
+Casting **does not change the data**, only how TypeScript views it:
 
-Tip: Most IDEs (including VS Code) support TypeScript debugging with breakpoints when source maps are enabled.
+```ts
+let x: unknown = 4;
+console.log((x as string).length); // undefined: x is still a number
+```
 
-Vite TypeScript types: Add Vite's ambient types to avoid missing definitions.
-Example
+TypeScript still blocks casts that look clearly wrong:
+
+```ts
+console.log((4 as string).length);
+// Error: Conversion of type 'number' to type 'string' may be a mistake...
+// If this was intentional, convert the expression to 'unknown' first.
+```
+
+To force it, go through `unknown`: `(4 as unknown as string)`. Use this sparingly.
+
+### Casting with `<>`
+
+```ts
+const value = <string>someValue;
+```
+
+This syntax does **not** work in TSX files (such as React components), so prefer `as`.
+
+---
+
+## 8. Classes
+
+### Member visibility
+
+| Modifier | Access |
+| --- | --- |
+| `public` (default) | From anywhere |
+| `private` | Only inside the class |
+| `protected` | Inside the class and any subclasses |
+
+The `this` keyword in a class usually refers to the instance of the class.
+
+> **Note:** TypeScript's `private` is enforced at compile time. Modern TypeScript also supports native JavaScript private fields (`#field`); both work.
+
+### Implementing interfaces
+
+A class can implement several interfaces, separated by commas:
+
+```ts
+class Rectangle implements Shape, Colored {
+  // ...
+}
+```
+
+### `override`
+
+The `override` keyword is optional by default. It only helps prevent accidentally "overriding" a method that doesn't exist in the parent. Turn on `noImplicitOverride` to require it.
+
+### Abstract classes
+
+Abstract classes can't be instantiated directly because they don't have all their members implemented. Subclasses must complete them.
+
+### `readonly`
+
+`readonly` is enforced at compile time. Because everything compiles down to JavaScript, the property could still be overwritten at runtime.
+
+---
+
+## 9. Generics and Utility Types
+
+Generics let you write reusable code that works across types.
+
+### Functions
+
+TypeScript can infer the generic parameter from the function arguments:
+
+```ts
+function identity<T>(value: T): T {
+  return value;
+}
+identity("hello"); // T inferred as string
+```
+
+### Classes
+
+Inference also works when the type parameter is used in a constructor parameter.
+
+### Type aliases and interfaces
+
+```ts
+type Wrapped<T> = { value: T };
+
+interface Wrapped2<T> {
+  value: T;
+}
+```
+
+### Constraints and defaults
+
+`extends` constrains a generic, and can be combined with a default value:
+
+```ts
+function logLength<T extends { length: number }>(item: T) {
+  console.log(item.length);
+}
+
+type Box<T extends object = {}> = { content: T };
+```
+
+### `Record`
+
+`Record<string, number>` is equivalent to `{ [key: string]: number }`.
+
+---
+
+## 10. Null and Undefined
+
+By default, `null`/`undefined` checking is **disabled**; enable it by setting `strictNullChecks` to `true`. The rest of this section assumes it is enabled.
+
+- Values must be set unless `undefined` is explicitly part of the type.
+
+```ts
+let name: string | undefined;
+```
+
+### Non-null assertion
+
+The `!` operator tells TypeScript a value is not `null`/`undefined`. Just like casting, this can be unsafe and should be used with care.
+
+```ts
+const el = document.getElementById("app")!;
+```
+
+---
+
+## 11. Promises and Async/Await
+
+### Promise types
+
+- `Promise<T>`: `T` is the type of the resolved value
+- `Promise<void>`: resolves with no value
+- `Promise<never>`: never resolves (rare)
+
+### Promise state flow
+
+```
+pending → fulfilled (with value: T)   // success
+pending → rejected  (with reason: any) // error
+```
+
+TypeScript tracks these states through the type system, helping you handle both success and failure.
+
+### Async function return types
+
+All `async` functions return a Promise, so the declared return type must be a Promise:
+
+```ts
+async function getString(): string {}           // Error: must return Promise
+async function getString(): Promise<string> {}  // Correct
+```
+
+### Benefits of async/await
+
+- **Readability:** sequential code that is easier to follow
+- **Error handling:** `try/catch` works for sync and async errors
+- **Debugging:** more synchronous-looking stack traces
+- **Type safety:** full inference and checking
+
+### Promise combination methods
+
+| Method | Behavior |
+| --- | --- |
+| `Promise.all()` | Waits for all promises to resolve |
+| `Promise.race()` | Returns the first settled promise |
+| `Promise.allSettled()` | Waits for all to settle (success or failure) |
+| `Promise.any()` | Returns the first fulfilled promise |
+
+> **Warning:** When `Promise.all` receives promises of different types, TypeScript infers an array of the union of those types. For more precise typing, use a tuple, type assertions, or define the expected structure.
+
+---
+
+## 12. Error Handling
+
+### Strategies
+
+- **Try/catch blocks:** for async/await code
+- **Error boundaries:** for React components
+- **Result types:** a functional approach with success/failure values
+- **Error subclassing:** for domain-specific errors
+
+### Patterns for robust code
+
+- Error boundaries in React for component-level handling
+- Result objects instead of exceptions for expected cases
+- A global handler for uncaught exceptions
+- Error logging to capture and report problems
+
+### `unknown` in `catch`
+
+With `strict` (specifically `useUnknownInCatchVariables`, available from TypeScript 4.4), caught errors are typed `unknown`. Always narrow before accessing properties:
+
+```ts
+try {
+  // ...
+} catch (error) {
+  if (error instanceof Error) {
+    console.log(error.message);
+  }
+}
+```
+
+---
+
+## 13. TypeScript in Real Projects
+
+### With Node.js and Express
+
+TypeScript adds:
+
+- Typed `Request`, `Response` and `NextFunction` for handlers
+- A `User` interface to guarantee the shape of data
+- Safer refactoring and better autocomplete for route params and bodies
+
+> **Note:** A `test` script is optional and assumes Jest is set up. Omit it otherwise.
+
+### With a database (TypeORM example)
+
+Install packages (use `pg` for PostgreSQL):
+
+```bash
+npm install typeorm reflect-metadata pg
+```
+
+Enable decorators in `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+Import `reflect-metadata` **once** at app startup. `emitDecoratorMetadata` emits type metadata for decorators, which libraries like TypeORM and class-validator rely on.
+
+### With React and Vite
+
+Add Vite's ambient types to avoid missing definitions:
+
+```ts
 // src/vite-env.d.ts
 /// <reference types="vite/client" />
+```
 
-Alternatively, add to tsconfig.json:
-Example
+Or in `tsconfig.json`:
+
+```json
 {
   "compilerOptions": {
     "types": ["vite/client"]
   }
 }
+```
 
-About React.FC: Prefer directly typed function components.
-React.FC is optional; it implicitly adds children but isn't required.
+**About `React.FC`:** prefer directly typed function components. `React.FC` is optional and isn't required.
 
-Optional baseUrl and paths: These can simplify imports if supported by your bundler.
-Example
+**Path aliases (optional):**
+
+```json
 {
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-
     }
   }
 }
-Configure only if your tooling (e.g., Vite, tsconfig-paths) is set up for path aliases.
+```
 
-Note: While namespaces are still fully supported in TypeScript, modern applications typically use ES modules (import/export) for better modularity and tree-shaking support.
-However, understanding namespaces is valuable for maintaining legacy codebases and certain library development scenarios.
+Only configure this if your tooling (Vite, `tsconfig-paths`, etc.) supports path aliases.
 
-Note: In JavaScript, all object keys are stored as strings, even numeric ones.
-However, TypeScript makes a distinction to help catch logical errors when using arrays vs objects.
+### Using untyped npm packages
 
-Important: When combining explicit properties with an index signature, the types of explicit properties must be assignable to the index signature's value type.
+If a package ships without types, editors such as VS Code will often suggest installing the matching `@types/...` package.
 
-Promises in TypeScript
-- Promise<T> - Generic type where T is the type of the resolved value
-- Promise<void> - For Promises that don't return a value
-- Promise<never> - For Promises that never resolve (rare)
+### Namespaces vs modules
 
-Promise States and Type Flow
->> Promise State Flow:
-- pending → fulfilled (with value: T) // Success case
-- pending → rejected (with reason: any) // Error case
->>TypeScript tracks these states through the type system, ensuring you handle both success and error cases properly.
+Namespaces are still fully supported, but modern applications use ES modules (`import`/`export`) for better modularity and tree-shaking. Understanding namespaces is still useful for legacy codebases and some library work.
 
-Key Benefits of Async/Await
-- Readability: Sequential code that's easier to follow
-- Error Handling: Use try/catch for both sync and async errors
-- Debugging: Easier to debug with synchronous-like stack traces
-- Type Safety: Full TypeScript type inference and checking
+---
 
-Async Function Return Types
->> All async functions in TypeScript return a Promise.
-The return type is automatically wrapped in a Promise:
-         async function getString(): string { } // Error: must return Promise
-         async function getString(): Promise<string> { } // Correct
+## 14. Migrating from JavaScript
 
-Note: All async functions in TypeScript return a Promise.
-The type parameter of the Promise corresponds to the return type you declare after the Promise keyword.
+### JSDoc type checking
 
-Promise Combination Methods
-- Promise.all() - Waits for all promises to resolve
-- Promise.race() - Returns the first settled promise
-- Promise.allSettled() - Waits for all to settle (success or failure)
-- Promise.any() - Returns the first fulfilled promise
+JSDoc plus TypeScript lets you type-check `.js` files without converting them to `.ts`. This is great for gradual migration.
 
-Warning: When using Promise.all with an array of promises that have different types, TypeScript will infer the result type as an array of the union of all possible types.
-For more precise typing, you may need to use type assertions or define the expected structure.
+```js
+// @ts-check
 
-Error Handling Strategies
-- Try/Catch Blocks: For handling errors in async/await
-- Error Boundaries: For React components
-- Result Types: Functional approach with success/failure
-- Error Subclassing: For domain-specific errors
+/**
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+function add(a, b) {
+  return a + b;
+}
+```
 
-Error Handling Patterns
->> Consider these patterns for robust error handling:
-- Error Boundaries in React for component-level error handling
-- Result Objects instead of throwing exceptions for expected cases
-- Global Error Handler for uncaught exceptions
-- Error Logging to capture and report errors
+Things that commonly go wrong:
 
-Note: The emitDecoratorMetadata option enables experimental support for emitting type metadata for decorators, which is used by libraries like TypeORM and class-validator.
+- Missing `// @ts-check`: checking won't happen
+- Incorrect JSDoc syntax: one typo can disable checking
+- Type conflicts between sources
+- Inference gaps where TypeScript can't work out a type
+- Performance cost on large JS files with complex types
 
-TypeScript in JavaScript Projects (JSDoc)
->> JSDoc with TypeScript allows you to add type checking to JavaScript files without converting them to .ts.
-This is perfect for gradual migration or when you want type safety in JavaScript projects.
+> **Remember:** For new projects or complete migrations, `.ts` files give the best TypeScript experience.
 
-Watch out for these common issues:
-- Missing // @ts-check: Type checking won't work without it
-- Incorrect JSDoc syntax: A single typo can disable type checking
-- Type conflicts: When types from different sources don't match
-- Inference issues: Sometimes TypeScript can't infer types correctly
-- Performance: Large JavaScript files with complex types can be slow to check
+> **Recommendation:** For large projects, migrate gradually to minimize disruption and keep the work manageable.
 
-Remember: While JSDoc provides excellent type checking, for new projects or complete migrations, consider using .ts files for the best TypeScript experience.
+---
 
-Important Note
->> For large projects, I strongly recommend the gradual migration approach to minimize disruption and make the process more manageable.
+## 15. Common Pitfalls
 
-TypeScript 4.0+ Note
->> In TypeScript 4.0 and later, the unknown type is the default type for catch variables. Always narrow the type before accessing properties.
+### Not handling promise rejections
 
-Common Pitfalls
->> Not Handling Promise Rejections
-Always handle promise rejections to prevent unhandled promise rejection warnings:
-// Bad: Unhandled promise rejection
+```ts
+// Bad: unhandled promise rejection
 fetchData();
-// Good: Handle the rejection
-fetchData().catch(console.error);
 
->> Catching Without Proper Type Narrowing
-In TypeScript 4.0+, caught errors are of type unknown:
-// Bad: Error is of type 'unknown'
+// Good
+fetchData().catch(console.error);
+```
+
+### Catching without narrowing
+
+```ts
+// Bad: error is 'unknown'
 try { /* ... */ } catch (error) {
   console.log(error.message); // Error: Property 'message' does not exist on type 'unknown'
 }
-// Good: Narrow the type
+
+// Good
 try { /* ... */ } catch (error) {
   if (error instanceof Error) {
-    console.log(error.message); // OK
+    console.log(error.message);
   }
 }
+```
 
->> Swallowing Errors
-Avoid silently catching and ignoring errors without proper handling:
-// Bad: Error is silently ignored
+### Swallowing errors
+
+```ts
+// Bad: error silently ignored
 function saveData(data: Data) {
   try {
     database.save(data);
@@ -332,13 +619,18 @@ function saveData(data: Data) {
     // Ignore
   }
 }
-// Better: Log the error and/or notify the user
+
+// Better: log and notify
 function saveData(data: Data) {
   try {
     database.save(data);
   } catch (error) {
-    console.error('Failed to save data:', error);
-    showError('Failed to save data. Please try again.');
+    console.error("Failed to save data:", error);
+    showError("Failed to save data. Please try again.");
   }
 }
+```
 
+---
+
+Found a mistake or want to add something? Pull requests are welcome.
